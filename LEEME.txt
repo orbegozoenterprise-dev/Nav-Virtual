@@ -1,0 +1,19 @@
+NAV.VIRTUAL v9 — iPhone (aplicación web)
+Requiere servidor HTTPS e internet. No es un IPA ni una app de App Store.
+1. Copie los archivos a un servidor con Python 3. Configure variables de entorno privadas:
+   NAV_ORIGIN=https://su-dominio.example (sin barra final)
+   NAV_PASSWORD=una contraseña privada de al menos 16 caracteres
+   TWILIO_AUTH_TOKEN=su nuevo token (no use el token compartido anteriormente)
+   NAV_DATA=/ruta/privada/persistente (opcional)
+2. Ejecute python3 servidor.py. El servicio escucha únicamente en 127.0.0.1:8080.
+3. Configure un proxy HTTPS (por ejemplo Caddy) con su dominio real:
+   su-dominio.example {
+       reverse_proxy 127.0.0.1:8080
+   }
+   Configure DNS y certificado válido; mantenga el servidor ejecutándose.
+4. Abra la URL HTTPS en Safari. Usuario: nav. Contraseña: NAV_PASSWORD.
+5. Compartir > Añadir a pantalla de inicio > Abrir como app web (si aparece).
+Los números Twilio de la versión anterior están preconfigurados. El token queda en el servidor.
+El chat consulta los SMS mientras está abierto. El borrado es local al servidor.
+El movimiento se calcula en el iPhone mientras la app está activa; iOS puede suspenderlo al bloquear la pantalla. No sincroniza rutas con Windows ni mantiene navegación en segundo plano. Las posiciones son virtuales, no GPS real. Las rutas no evitan tierra ni obstáculos.
+No se ha desplegado ni probado en iPhone ni enviado SMS reales.
