@@ -57,7 +57,7 @@ class Handler(BaseHTTPRequestHandler):
     hidden=hidden_ids(); self.reply(200,{'messages':[m for m in messages if m['sid'] not in hidden]}); return
    if not isinstance(body,str) or len(body)>1200: raise ValueError('Mensaje demasiado largo')
    if not re.fullmatch(r'AC[0-9a-fA-F]{32}',sid) or not secret or not re.fullmatch(r'\+[1-9]\d{7,14}',sender): raise ValueError('Configure las credenciales y el numero Twilio al abrir el programa')
-   body=body+'\nPosicion Virtual v9 · No GPS real'
+   body=body+'\nPosición virtual generada por Nav.Virtual v9'
    req=urllib.request.Request('https://api.twilio.com/2010-04-01/Accounts/'+sid+'/Messages.json',data=urllib.parse.urlencode({'To':to,'From':sender,'Body':body}).encode(),headers={'Authorization':'Basic '+base64.b64encode((sid+':'+secret).encode()).decode()},method='POST')
    with urllib.request.urlopen(req,timeout=20) as r: result=json.load(r)
    self.reply(200,{'status':result.get('status','accepted'),'sid':result.get('sid')})
