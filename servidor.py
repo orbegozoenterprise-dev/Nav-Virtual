@@ -6,7 +6,7 @@ sid='ACa10e24d2f4d823af86a68b1a5561a524'
 sender='+16592007342'
 secret=os.environ.get('TWILIO_AUTH_TOKEN','').strip()
 password=os.environ.get('NAV_PASSWORD','')
-origin=os.environ.get('NAV_ORIGIN','').rstrip('/')
+origin=(os.environ.get('NAV_ORIGIN') or os.environ.get('RENDER_EXTERNAL_URL') or '').rstrip('/')
 if len(password)<16 or not origin.startswith('https://'): raise SystemExit('Configure NAV_PASSWORD (16 caracteres minimo) y NAV_ORIGIN (HTTPS).')
 import hmac
 hidden_path=Path(os.environ.get('NAV_DATA','./data'))/'hidden-sms.json'
@@ -22,6 +22,8 @@ class Handler(BaseHTTPRequestHandler):
   if hmac.compare_digest(self.headers.get('Authorization',''),expected): return True
   self.send_response(401); self.send_header('WWW-Authenticate','Basic realm="Nav.Virtual"'); self.send_header('Cache-Control','no-store'); self.end_headers(); return False
  def do_GET(self):
+  if self.path=='/healthz':
+   self.reply(200,{'status':'ok'}); return
   if not self.authorized(): return
   assets={'/':('index.html','text/html; charset=utf-8'),'/manifest.json':('manifest.json','application/manifest+json'),'/icon-192.png':('icon-192.png','image/png'),'/icon-512.png':('icon-512.png','image/png')}
   if self.path not in assets: self.send_error(404); return
@@ -64,6 +66,7 @@ class Handler(BaseHTTPRequestHandler):
    except Exception: msg='Error del proveedor'
    self.reply(502,{'error':msg})
   except Exception as e: self.reply(400,{'error':str(e)})
-server=HTTPServer(('127.0.0.1',8080),Handler)
-print('Nav.Virtual: servidor local en puerto 8080')
+port=int(os.environ.get('PORT','8080'))
+server=HTTPServer(('0.0.0.0',port),Handler)
+print(f'Nav.Virtual: servidor en puerto {port}',flush=True)
 server.serve_forever()
