@@ -13,7 +13,7 @@ hidden_path=Path(os.environ.get('NAV_DATA','./data'))/'hidden-sms.json'
 def hidden_ids():
  if not hidden_path.exists(): return set()
  return set(json.loads(hidden_path.read_text(encoding='utf-8')))
-key=secrets.token_urlsafe(32)
+key=hmac.new(password.encode(), ('nav-virtual:csrf:v2:'+origin).encode(), 'sha256').hexdigest()
 class Handler(BaseHTTPRequestHandler):
  def reply(self,code,obj):
   data=json.dumps(obj,ensure_ascii=False).encode(); self.send_response(code); self.send_header('Content-Type','application/json; charset=utf-8'); self.send_header('Cache-Control','no-store'); self.end_headers(); self.wfile.write(data)
@@ -22,9 +22,12 @@ class Handler(BaseHTTPRequestHandler):
   if hmac.compare_digest(self.headers.get('Authorization',''),expected): return True
   self.send_response(401); self.send_header('WWW-Authenticate','Basic realm="Nav.Virtual"'); self.send_header('Cache-Control','no-store'); self.end_headers(); return False
  def do_GET(self):
+  self.path=urllib.parse.urlsplit(self.path).path
   if self.path=='/healthz':
    self.reply(200,{'status':'ok'}); return
   if not self.authorized(): return
+  if self.path=='/session-token':
+   self.reply(200,{'token':key}); return
   assets={'/':('index.html','text/html; charset=utf-8'),'/manifest.json':('manifest.json','application/manifest+json'),'/icon-192.png':('icon-192.png','image/png'),'/icon-512.png':('icon-512.png','image/png')}
   if self.path not in assets: self.send_error(404); return
   name,typ=assets[self.path]; data=(ROOT/name).read_bytes()
@@ -32,7 +35,13 @@ class Handler(BaseHTTPRequestHandler):
   self.send_response(200); self.send_header('Content-Type',typ); self.send_header('Cache-Control','no-store'); self.send_header('X-Content-Type-Options','nosniff'); self.end_headers(); self.wfile.write(data)
  def do_POST(self):
   if not self.authorized(): return
-  if self.path not in ('/sms','/chat','/hide-chat') or self.headers.get('X-Local-Token')!=key or self.headers.get('Origin')!=origin: self.reply(403,{'error':'Solicitud no autorizada'}); return
+  if self.path not in ('/sms','/chat','/hide-chat'):
+   self.reply(404,{'error':'Acción desconocida'}); return
+  supplied_origin=self.headers.get('Origin')
+  if (supplied_origin is not None and supplied_origin!=origin) or self.headers.get('Sec-Fetch-Site')=='cross-site':
+   self.reply(403,{'error':'Origen web no autorizado','code':'origin_mismatch'}); return
+  if not hmac.compare_digest(self.headers.get('X-Local-Token',''),key):
+   self.reply(403,{'error':'Sesión del chat caducada. Actualice la página.','code':'session_expired'}); return
   try:
    size=int(self.headers.get('Content-Length','0'))
    if not 0<size<16000: raise ValueError('Solicitud demasiado grande')
